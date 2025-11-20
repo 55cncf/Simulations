@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heat Transfer Simulation - Conduction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a3a, #0d1b2a);
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .simulation-panel {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #simulation-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .control-panel {
+            width: 350px;
+            background: rgba(30, 40, 50, 0.9);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
+            border-left: 1px solid #2a3a4a;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4fc3f7;
+            font-weight: 400;
+            font-size: 1.5rem;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #2a3a4a;
+        }
+        
+        h2 {
+            color: #81d4fa;
+            font-weight: 400;
+            margin: 20px 0 10px 0;
+            font-size: 1.2rem;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #2a3a4a;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            background: rgba(40, 50, 60, 0.5);
+            padding: 12px;
+            border-radius: 5px;
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        
+        label {
+            font-size: 0.9rem;
+            color: #b0bec5;
+            width: 60%;
+        }
+        
+        .input-group {
+            display: flex;
+            width: 40%;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            margin: 0 5px;
+        }
+        
+        input[type="number"] {
+            width: 60px;
+            background: #2a3a4a;
+            color: #e0e0e0;
+            border: 1px solid #3a4a5a;
+            border-radius: 4px;
+            padding: 4px;
+            text-align: center;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: #2a3a4a;
+            color: #e0e0e0;
+            border: 1px solid #3a4a5a;
+            border-radius: 4px;
+        }
+        
+        button {
+            background: #1565c0;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #0d47a1;
+        }
+        
+        .status-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .material-toggle {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .material-toggle button {
+            flex: 1;
+            margin: 0 2px;
+            padding: 8px 5px;
+            font-size: 0.8rem;
+        }
+        
+        .material-toggle button.active {
+            background: #0d47a1;
+            box-shadow: 0 0 5px rgba(13, 71, 161, 0.7);
+        }
+        
+        .color-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        .color-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-bottom: 3px;
+        }
+        
+        .instructions {
+            font-size: 0.8rem;
+            color: #90a4ae;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        .hot-object-controls {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .hot-object-controls label {
+            color: #ffb74d;
+        }
+        
+        .selection-indicator {
+            position: absolute;
+            pointer-events: none;
+            border: 2px solid #ff9800;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff9800;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .selection-indicator.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="simulation-panel">
+            <div id="simulation-container"></div>
+            <div id="selection-indicator" class="selection-indicator"></div>
+        </div>
+        
+        <div class="control-panel">
+            <h1>Heat Transfer Simulation</h1>
+            
+            <div class="control-group">
+                <div class="material-toggle">
+                    <button id="conductor-btn" class="active">Conductor</button>
+                    <button id="insulator-btn">Insulator</button>
+                </div>
+               
+                <div class="control-row">
+                    <button id="start-btn">Start Simulation</button>
+                    <button id="pause-btn">Pause</button>
+                </div>
+                <button id="reset-btn">Reset Simulation</button>
+            </div>
+            
+            <div class="status-info">
+                <div class="status-row">
+                    <span>Status:</span>
+                    <span id="status">Stopped</span>
+                </div>
+                <div class="status-row">
+                    <span>Avg Temperature:</span>
+                    <span id="avg-temp">0°C</span>
+                </div>
+                <div class="status-row">
+                    <span>Heat Flow Rate:</span>
+                    <span id="heat-flow">0 W</span>
+                </div>
+                <div class="status-row">
+                    <span>Simulation Time:</span>
+                    <span id="sim-time">0.0s</span>
+                </div>
+                <div class="control-row">
+                    <label for="sim-speed">Simulation Speed:</label>
+                    <div class="input-group">
+                        <input type="range" id="sim-speed" min="0.1" max="5" step="0.1" value="1">
+                        <input type="number" id="sim-speed-value" min="0.1" max="5" step="0.1" value="1">
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Material Properties</h2>
+            <div class="control-group">
+                <div class="control-row">
+                    <label for="thermal-conductivity">Thermal Conductivity:</label>
+                    <div class="input-group">
+                        <input type="range" id="thermal-conductivity" min="0.1" max="10" step="0.1" value="1">
+                        <input type="number" id="thermal-conductivity-value" min="0.1" max="10" step="0.1" value="1">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="vibration-scale">Vibration Scale:</label>
+                    <div class="input-group">
+                        <input type="range" id="vibration-scale" min="0.1" max="10" step="0.1" value="1.5">
+                        <input type="number" id="vibration-scale-value" min="0.1" max="10" step="0.1" value="1.5">
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Lattice Settings</h2>
+            <div class="control-group">
+                <div class="control-row">
+                    <label for="atom-count-x">Atoms X:</label>
+                    <div class="input-group">
+                        <input type="range" id="atom-count-x" min="2" max="20" value="8">
+                        <input type="number" id="atom-count-x-value" min="2" max="20" value="8">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="atom-count-y">Atoms Y:</label>
+                    <div class="input-group">
+                        <input type="range" id="atom-count-y" min="2" max="20" value="8">
+                        <input type="number" id="atom-count-y-value" min="2" max="20" value="8">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="atom-count-z">Atoms Z:</label>
+                    <div class="input-group">
+                        <input type="range" id="atom-count-z" min="2" max="20" value="3">
+                        <input type="number" id="atom-count-z-value" min="2" max="20" value="3">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="atom-spacing">Atom Spacing:</label>
+                    <div class="input-group">
+                        <input type="range" id="atom-spacing" min="0.5" max="5" step="0.1" value="1.5">
+                        <input type="number" id="atom-spacing-value" min="0.5" max="5" step="0.1" value="1.5">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="atom-size">Atom Size:</label>
+                    <div class="input-group">
+                        <input type="range" id="atom-size" min="0.1" max="2" step="0.1" value="0.4">
+                        <input type="number" id="atom-size-value" min="0.1" max="2" step="0.1" value="0.4">
+                    </div>
+                </div>
+                <button id="build-btn">Build/Update Lattice</button>
+            </div>
+            
+            <div id="electron-settings">
+                <h2>Electron Settings</h2>
+                <div class="control-group">
+                    <div class="control-row">
+                        <label for="electron-density">Electron Density:</label>
+                        <div class="input-group">
+                            <input type="range" id="electron-density" min="0.1" max="2" step="0.1" value="1">
+                            <input type="number" id="electron-density-value" min="0.1" max="2" step="0.1" value="1">
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label for="electron-count">Electron Count:</label>
+                        <div class="input-group">
+                            <input type="range" id="electron-count" min="10" max="500" value="100">
+                            <input type="number" id="electron-count-value" min="10" max="500" value="100">
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label for="electron-size">Electron Size:</label>
+                        <div class="input-group">
+                            <input type="range" id="electron-size" min="0.01" max="0.5" step="0.01" value="0.08">
+                            <input type="number" id="electron-size-value" min="0.01" max="0.5" step="0.01" value="0.08">
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label for="electron-speed">Electron Speed:</label>
+                        <div class="input-group">
+                            <input type="range" id="electron-speed" min="0.1" max="5" step="0.1" value="0.8">
+                            <input type="number" id="electron-speed-value" min="0.1" max="5" step="0.1" value="0.8">
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label for="electron-drift">Electron Drift:</label>
+                        <div class="input-group">
+                            <input type="range" id="electron-drift" min="0" max="5" step="0.1" value="2">
+                            <input type="number" id="electron-drift-value" min="0" max="5" step="0.1" value="2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Heat Sources</h2>
+            <div class="control-group">
+                <div class="control-row">
+                    <label for="hot-temp">Hot Temperature:</label>
+                    <div class="input-group">
+                        <input type="range" id="hot-temp" min="0" max="1000" value="120">
+                        <input type="number" id="hot-temp-value" min="0" max="1000" value="120">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="cold-temp">Cold Temperature:</label>
+                    <div class="input-group">
+                        <input type="range" id="cold-temp" min="0" max="1000" value="20">
+                        <input type="number" id="cold-temp-value" min="0" max="1000" value="20">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="ambient-temp">Ambient Temperature:</label>
+                    <div class="input-group">
+                        <input type="range" id="ambient-temp" min="0" max="1000" value="25">
+                        <input type="number" id="ambient-temp-value" min="0" max="1000" value="25">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="hot-radius">Hot Region Radius:</label>
+                    <div class="input-group">
+                        <input type="range" id="hot-radius" min="1" max="10" value="2">
+                        <input type="number" id="hot-radius-value" min="1" max="10" value="2">
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label for="cold-radius">Cold Region Radius:</label>
+                    <div class="input-group">
+                        <input type="range" id="cold-radius" min="1" max="10" value="2">
+                        <input type="number" id="cold-radius-value" min="1" max="10" value="2">
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Movable Hot Object</h2>
+            <div class="control-group">
+                <div class="control-row">
+                    <label for="hot-object-active">Active:</label>
+                    <input type="checkbox" id="hot-object-active" checked>
+                </div>
+                <div class="hot-object-controls">
+                    <div class="control-row">
+                        <label for="hot-object-temp">Temperature:</label>
+                        <div class="input-group">
+                            <input type="range" id="hot-object-temp" min="0" max="2000" value="300">
+                            <input type="number" id="hot-object-temp-value" min="0" max="2000" value="300">
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label for="hot-object-radius">Radius (cells):</label>
+                        <div class="input-group">
+                            <input type="range" id="hot-object-radius" min="1" max="10" value="3">
+                            <input type="number" id="hot-object-radius-value" min="1" max="10" value="3">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="color-legend">
+                <div class="color-item">
+                    <div class="color-box" style="background: #0000ff;"></div>
+                    <span>Cold</span>
+                </div>
+                <div class="color-item">
+                    <div class="color-box" style="background: #00ff00;"></div>
+                    <span>Medium</span>
+                </div>
+                <div class="color-item">
+                    <div class="color-box" style="background: #ff0000;"></div>
+                    <span>Hot</span>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <p><strong>Instructions:</strong></p>
+                <p>- Use mouse/touch to rotate the view</p>
+                <p>- Scroll/pinch to zoom in/out</p>
+                <p>- Click/tap and drag the orange hot object to move it</p>
+                <p>- Adjust parameters in the control panel</p>
+                <p><strong>Educational Notes:</strong></p>
+                <p>- In conductors, electrons carry heat via collisions</p>
+                <p>- In insulators, heat transfers via atomic vibrations (phonons)</p>
+                <p>- Higher thermal conductivity = more electrons & higher density</p>
+                <p>- Higher ambient temp increases electron scattering in conductors</p>
+                <p>- Higher ambient temp reduces phonon transmission in insulators</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Simulation state
+        const simulation = {
+            isRunning: false,
+            isPaused: false,
+            startTime: 0,
+            simulationTime: 0,
+            avgTemperature: 0,
+            heatFlowRate: 0,
+            materialType: 'CONDUCTOR',
+            atoms: [],
+            electrons: [],
+            temperatureField: null,
+            phononField: null,
+            bounds: null,
+            gridSize: 25,
+            hotObject: null,
+            hotObjectGrabbed: false,
+            previousEnergyState: null,
+            lastHeatFlowUpdate: 0,
+            insulatorVibrationDelay: {}, // Track when atoms start vibrating in insulators
+            insulatorVibrationStarted: false
+        };
+
+        // Three.js variables
+        let scene, camera, renderer, controls;
+
+        // --- ADDED: G-key grab mode variables (do not modify anything else) ---
+            // Allows pressing 'G' to grab the hot object and move it with the mouse.
+            let gGrabMode = false;
+            const gMouse = new THREE.Vector2();
+            const gRaycaster = new THREE.Raycaster();
+            // --- ADDED: Axis constraint for G-grab mode ---
+            let gAxisConstraint = null;
+            // 'x','y','z', or null
+            // --- end added ---
+
+            // --- end added ---
+    
+        let atomGroup, electronGroup, hotObjectMesh;
+
+        // DOM Elements
+        const statusElement = document.getElementById('status');
+        const avgTempElement = document.getElementById('avg-temp');
+        const heatFlowElement = document.getElementById('heat-flow');
+        const simTimeElement = document.getElementById('sim-time');
+        const conductorBtn = document.getElementById('conductor-btn');
+        const insulatorBtn = document.getElementById('insulator-btn');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const buildBtn = document.getElementById('build-btn');
+        const electronSettings = document.getElementById('electron-settings');
+        const selectionIndicator = document.getElementById('selection-indicator');
+
+        // Initialize Three.js scene
+        function initThreeJS() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d1b2a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight - 60), 0.1, 1000);
+            camera.position.set(15, 15, 15);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(document.querySelector('.simulation-panel').clientWidth, 
+                            document.querySelector('.simulation-panel').clientHeight);
+            document.getElementById('simulation-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            scene.add(directionalLight);
+
+            // Create groups for objects
+            atomGroup = new THREE.Group();
+            scene.add(atomGroup);
+            
+            electronGroup = new THREE.Group();
+            scene.add(electronGroup);
+            
+            // Create hot object - positioned above the lattice
+            const hotObjectGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const hotObjectMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff9800, 
+                emissive: 0xff9800,
+                emissiveIntensity: 0.5
+            });
+            hotObjectMesh = new THREE.Mesh(hotObjectGeometry, hotObjectMaterial);
+            hotObjectMesh.position.set(0, 8, 0); // Positioned above the lattice
+            hotObjectMesh.userData.isHotObject = true;
+            scene.add(hotObjectMesh);
+            simulation.hotObject = hotObjectMesh;
+            
+            // Create a larger invisible helper for easier selection
+            const hotObjectSelectionHelperGeometry = new THREE.SphereGeometry(1.0, 32, 32);
+            const hotObjectSelectionHelperMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            const hotObjectSelectionHelper = new THREE.Mesh(hotObjectSelectionHelperGeometry, hotObjectSelectionHelperMaterial);
+            hotObjectMesh.add(hotObjectSelectionHelper);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Add drag functionality for hot object
+            setupHotObjectDrag();
+
+            // --- ADDED: G-key grab mode handlers (press 'G' to toggle grab, move mouse to move hot object) ---
+            // Toggle grab mode with 'G' key
+            window.addEventListener('keydown', (e) => {
+                if (e.key && e.key.toLowerCase() === 'g') {
+                    gGrabMode = !gGrabMode;
+                    if (gGrabMode) {
+                        simulation.hotObjectGrabbed = true;
+                        controls.enabled = false;
+                        updateSelectionIndicator();
+                    } else {
+                        simulation.hotObjectGrabbed = false;
+                        controls.enabled = true;
+                        selectionIndicator.classList.remove('visible');
+                    }
+                }
+            });
+
+            // --- ADDED: axis locking when in grab mode ---
+            if (gGrabMode) {
+                if (e.key.toLowerCase()==='x') gAxisConstraint = 'x';
+                if (e.key.toLowerCase()==='y') gAxisConstraint = 'y';
+                if (e.key.toLowerCase()==='z') gAxisConstraint = 'z';
+            }
+            // --- end added ---
+
+            
+            // While in grab mode, move object with mouse (raycast to a plane perpendicular to camera)
+            window.addEventListener('mousemove', (event) => {
+                if (!gGrabMode) return;
+                
+                // Convert mouse to NDC (normalized device coordinates)
+                gMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                gMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                gRaycaster.setFromCamera(gMouse, camera);
+                
+                // Create a plane perpendicular to camera direction and intersect
+                const planeNormal = new THREE.Vector3();
+                camera.getWorldDirection(planeNormal);
+                const movePlane = new THREE.Plane(planeNormal, 0);
+                
+                const intersectPoint = new THREE.Vector3();
+                if (gRaycaster.ray.intersectPlane(movePlane, intersectPoint)) {
+                    // Keep the hot object at a reasonable height above the lattice
+                    intersectPoint.y = Math.max(3, intersectPoint.y);
+
+                    if (simulation.hotObject) {
+                        
+                    // --- ADDED: apply axis constraint ---
+                    if (gAxisConstraint) {
+                        const cur = simulation.hotObject.position.clone();
+                        if (gAxisConstraint==='x') {
+                            intersectPoint.y = cur.y;
+                            intersectPoint.z = cur.z;
+                        }
+                        if (gAxisConstraint==='y') {
+                            intersectPoint.x = cur.x;
+                            intersectPoint.z = cur.z;
+                        }
+                        if (gAxisConstraint==='z') {
+                            intersectPoint.x = cur.x;
+                            intersectPoint.y = cur.y;
+                        }
+                    }
+                    // --- end added ---
+                    simulation.hotObject.position.copy(intersectPoint);
+                    updateSelectionIndicator();
+                    }
+                }
+            });
+            // --- end added ---
+    
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = document.querySelector('.simulation-panel').clientWidth / 
+                           document.querySelector('.simulation-panel').clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(document.querySelector('.simulation-panel').clientWidth, 
+                           document.querySelector('.simulation-panel').clientHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            if (simulation.isRunning && !simulation.isPaused) {
+                stepSimulation();
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+            
+            // Update selection indicator position if hot object is selected
+            if (simulation.hotObjectGrabbed) {
+                updateSelectionIndicator();
+            }
+        }
+        
+        // Update selection indicator position and visibility
+        function updateSelectionIndicator() {
+            if (!simulation.hotObjectGrabbed) {
+                selectionIndicator.classList.remove('visible');
+                return;
+            }
+            
+            // Convert 3D position to screen coordinates
+            const vector = simulation.hotObject.position.clone();
+            vector.project(camera);
+            
+            const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+
+            // Update selection indicator position and size
+            const radius = 40;
+            // Size of the selection indicator
+            selectionIndicator.style.width = `${radius * 2}px`;
+            selectionIndicator.style.height = `${radius * 2}px`;
+            selectionIndicator.style.left = `${x - radius}px`;
+            selectionIndicator.style.top = `${y - radius}px`;
+            selectionIndicator.classList.add('visible');
+        }
+        
+        // Setup hot object dragging
+        function setupHotObjectDrag() {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            let isDragging = false;
+            
+            function onMouseDown(event) {
+                // allow left-click to grab
+                if (event.button===0) simulation.hotObjectGrabbed=true;
+                // Calculate mouse position in normalized device coordinates
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Update the picking ray with the camera and mouse position
+                raycaster.setFromCamera(mouse, camera);
+                // Calculate objects intersecting the picking ray
+                // Use the invisible helper for easier selection
+                const helper = hotObjectMesh.children[0];
+                const intersects = raycaster.intersectObject(helper);
+                
+                if (intersects.length > 0) {
+                    isDragging = true;
+                    simulation.hotObjectGrabbed = true;
+                    controls.enabled = false;
+                    
+                    // Update selection indicator
+                    updateSelectionIndicator();
+                }
+            }
+            
+            function onMouseMove(event) {
+                if (!isDragging) return;
+                // Calculate mouse position in normalized device coordinates
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Update the picking ray with the camera and mouse position
+                raycaster.setFromCamera(mouse, camera);
+                // Create a plane to intersect with (perpendicular to camera view)
+                const planeNormal = new THREE.Vector3();
+                camera.getWorldDirection(planeNormal);
+                const plane = new THREE.Plane(planeNormal, 0);
+                
+                // Find the intersection point
+                const intersectionPoint = new THREE.Vector3();
+                if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
+                    // Update hot object position - keep it at a reasonable height
+                    intersectionPoint.y = Math.max(3, intersectionPoint.y);
+                    hotObjectMesh.position.copy(intersectionPoint);
+                    
+                    // Update selection indicator
+                    updateSelectionIndicator();
+                }
+            }
+            
+            function onMouseUp() {
+                isDragging = false;
+                simulation.hotObjectGrabbed = false;
+                controls.enabled = true;
+                
+                // Hide selection indicator
+                selectionIndicator.classList.remove('visible');
+            }
+            
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+
+            // --- Touch Support for iPad/Mobile ---
+            function onTouchStart(event) {
+                if (event.touches.length > 0) {
+                    mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+                    
+                    raycaster.setFromCamera(mouse, camera);
+                    const helper = hotObjectMesh.children[0];
+                    const intersects = raycaster.intersectObject(helper);
+                    
+                    if (intersects.length > 0) {
+                        isDragging = true;
+                        simulation.hotObjectGrabbed = true;
+                        controls.enabled = false; 
+                        updateSelectionIndicator();
+                        event.preventDefault(); // Prevent scrolling while dragging
+                    }
+                }
+            }
+
+            function onTouchMove(event) {
+                if (!isDragging || event.touches.length === 0) return;
+                
+                mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                const planeNormal = new THREE.Vector3();
+                camera.getWorldDirection(planeNormal);
+                const plane = new THREE.Plane(planeNormal, 0);
+                const intersectionPoint = new THREE.Vector3();
+                
+                if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
+                    intersectionPoint.y = Math.max(3, intersectionPoint.y);
+                    hotObjectMesh.position.copy(intersectionPoint);
+                    updateSelectionIndicator();
+                }
+                event.preventDefault();
+            }
+
+            function onTouchEnd(event) {
+                if (isDragging) {
+                    isDragging = false;
+                    simulation.hotObjectGrabbed = false;
+                    controls.enabled = true;
+                    selectionIndicator.classList.remove('visible');
+                }
+            }
+
+            renderer.domElement.addEventListener('touchstart', onTouchStart, {passive: false});
+            renderer.domElement.addEventListener('touchmove', onTouchMove, {passive: false});
+            renderer.domElement.addEventListener('touchend', onTouchEnd);
+        }
+        
+        // Build the lattice geometry
+        function buildGeometry() {
+            // Clear existing objects
+            clearSimulationObjects();
+            // Get simulation parameters
+            const sim = getSimulationParameters();
+            const atomCountX = sim.atomCountX;
+            const atomCountY = sim.atomCountY;
+            const atomCountZ = sim.atomCountZ;
+            const atomSpacing = sim.atomSpacing;
+            const atomSize = sim.atomSize;
+            // Initialize temperature field
+            simulation.gridSize = 25;
+            simulation.temperatureField = new Array(simulation.gridSize);
+            for (let i = 0; i < simulation.gridSize; i++) {
+                simulation.temperatureField[i] = new Array(simulation.gridSize);
+                for (let j = 0; j < simulation.gridSize; j++) {
+                    simulation.temperatureField[i][j] = new Array(simulation.gridSize);
+                    for (let k = 0; k < simulation.gridSize; k++) {
+                        simulation.temperatureField[i][j][k] = sim.ambientTemperature;
+                    }
+                }
+            }
+            
+            // Initialize phonon field for insulators
+            if (simulation.materialType === 'INSULATOR') {
+                simulation.phononField = new Array(simulation.gridSize);
+                for (let i = 0; i < simulation.gridSize; i++) {
+                    simulation.phononField[i] = new Array(simulation.gridSize);
+                    for (let j = 0; j < simulation.gridSize; j++) {
+                        simulation.phononField[i][j] = new Array(simulation.gridSize);
+                        for (let k = 0; k < simulation.gridSize; k++) {
+                            simulation.phononField[i][j][k] = 0;
+                        }
+                    }
+                }
+            }
+            
+            // Reset insulator vibration delays
+            simulation.insulatorVibrationDelay = {};
+            simulation.insulatorVibrationStarted = false;
+            
+            // Calculate offset to center the lattice
+            const offset = new THREE.Vector3(
+                (atomCountX - 1) * atomSpacing / 2,
+                (atomCountY - 1) * atomSpacing / 2,
+                (atomCountZ - 1) * atomSpacing / 2
+            );
+            
+            // Create atoms
+            const atomGeometry = new THREE.SphereGeometry(atomSize, 16, 16);
+            for (let i = 0; i < atomCountX; i++) {
+                for (let j = 0; j < atomCountY; j++) {
+                    for (let k = 0; k < atomCountZ; k++) {
+                        const position = new THREE.Vector3(
+                            i * atomSpacing - offset.x,
+                            j * atomSpacing - offset.y,
+                            k * atomSpacing - offset.z
+                        );
+                        const atomMaterial = new THREE.MeshPhongMaterial({ 
+                            color: 0x2196f3,
+                            emissive: 0x000000,
+                            emissiveIntensity: 0
+                        });
+                        const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+                        atom.position.copy(position);
+                        
+                        // Store simulation data
+                        atom.userData = {
+                            basePos: position.clone(),
+                            vibrationAmplitude: 0,
+                            vibrationPhase: Math.random() * Math.PI * 2,
+                            vibrationDecay: 0.98,
+                            gridPos: { x: i, y: j, z: k },
+                            lastCollisionTime: 0,
+                            vibrationSource: 'none', // 'none', 'electron', 'hotObject', 'phonon'
+                            atomId: `atom_${i}_${j}_${k}`,
+                            vibrationEnergy: 0, // For gradual buildup in insulators
+                            maxVibrationEnergy: 0 // For tracking max energy reached
+                        };
+                        atomGroup.add(atom);
+                        simulation.atoms.push(atom);
+                        
+                        // Initialize vibration delay for insulators
+                        if (simulation.materialType === 'INSULATOR') {
+                            simulation.insulatorVibrationDelay[atom.userData.atomId] = {
+                                startTime: Infinity,
+                                intensity: 0,
+                                energyAccumulated: 0,
+                                hasStarted: false
+                            };
+                        }
+                    }
+                }
+            }
+            
+            // Calculate bounds
+            if (simulation.atoms.length > 0) {
+                simulation.bounds = {
+                    min: new THREE.Vector3(
+                        -offset.x, -offset.y, -offset.z
+                    ),
+                    max: new THREE.Vector3(
+                        (atomCountX - 1) * atomSpacing - offset.x,
+                        (atomCountY - 1) * atomSpacing - offset.y,
+                        (atomCountZ - 1) * atomSpacing - offset.z
+                    )
+                };
+            }
+            
+            // Create electrons for conductors
+            if (simulation.materialType === 'CONDUCTOR') {
+                // Calculate actual electron count based on density and conductivity
+                const baseElectronCount = sim.electronCount;
+                const electronDensity = sim.electronDensity;
+                const thermalConductivity = sim.thermalConductivity;
+                
+                // Higher conductivity and density = more electrons, more closely packed
+                const actualElectronCount = Math.max(10, Math.min(500, 
+                    Math.round(baseElectronCount * electronDensity * thermalConductivity)));
+                const electronSize = sim.electronSize;
+                const electronSpeed = sim.electronSpeed;
+                const electronDrift = sim.electronDrift;
+                
+                const electronGeometry = new THREE.SphereGeometry(electronSize, 16, 16);
+                // Calculate drift direction
+                const hotRegionX = 0.1;
+                const hotRegionY = 0.5;
+                const hotRegionZ = 0.5;
+                const coldRegionX = 0.9;
+                const coldRegionY = 0.5;
+                const coldRegionZ = 0.5;
+                const hotCenterWorld = new THREE.Vector3(
+                    (hotRegionX - 0.5) * atomCountX * atomSpacing,
+                    (hotRegionY - 0.5) * atomCountY * atomSpacing,
+                    (hotRegionZ - 0.5) * atomCountZ * atomSpacing
+                );
+                const coldCenterWorld = new THREE.Vector3(
+                    (coldRegionX - 0.5) * atomCountX * atomSpacing,
+                    (coldRegionY - 0.5) * atomCountY * atomSpacing,
+                    (coldRegionZ - 0.5) * atomCountZ * atomSpacing
+                );
+                const driftDir = new THREE.Vector3().subVectors(coldCenterWorld, hotCenterWorld);
+                if (driftDir.length() > 0.001) {
+                    driftDir.normalize();
+                } else {
+                    driftDir.set(1, 0, 0);
+                }
+                
+                // Common velocity for all electrons
+                const commonVelocity = driftDir.multiplyScalar(electronSpeed * electronDrift * 0.2);
+                // Arrange electrons in a grid - more densely packed with higher density and conductivity
+                const electronsPerSide = Math.max(2, Math.round(Math.cbrt(actualElectronCount)));
+                // Higher density = closer packing
+                const spacingFactor = 0.8 / (electronDensity * Math.sqrt(thermalConductivity));
+                let electronIndex = 0;
+                for (let i = 0; i < electronsPerSide; i++) {
+                    for (let j = 0; j < electronsPerSide; j++) {
+                        for (let k = 0; k < electronsPerSide; k++) {
+                            if (electronIndex >= actualElectronCount) break;
+                            
+                            // Calculate position in the grid
+                            const xRatio = electronsPerSide > 1 ?
+                            i / (electronsPerSide - 1) : 0.5;
+                            const yRatio = electronsPerSide > 1 ?
+                            j / (electronsPerSide - 1) : 0.5;
+                            const zRatio = electronsPerSide > 1 ?
+                            k / (electronsPerSide - 1) : 0.5;
+                            
+                            const position = new THREE.Vector3(
+                                simulation.bounds.min.x + (simulation.bounds.max.x - simulation.bounds.min.x) * xRatio,
+                                simulation.bounds.min.y + (simulation.bounds.max.y - simulation.bounds.min.y) * yRatio,
+                                simulation.bounds.min.z + (simulation.bounds.max.z - simulation.bounds.min.z) * zRatio
+                            );
+                            // Add random variation - less variation with higher density (more ordered)
+                            const randomFactor = 1.0 / Math.sqrt(electronDensity * thermalConductivity);
+                            position.x += (Math.random() - 0.5) * atomSpacing * spacingFactor * 2 * randomFactor;
+                            position.y += (Math.random() - 0.5) * atomSpacing * spacingFactor * 2 * randomFactor;
+                            position.z += (Math.random() - 0.5) * atomSpacing * spacingFactor * 2 * randomFactor;
+                            const electronMaterial = new THREE.MeshPhongMaterial({ 
+                                color: 0x0088ff, // Bright blue color for electrons
+                                emissive: 0x0088ff,
+                                emissiveIntensity: 1.5 // Increased brightness
+                            });
+                            const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+                            electron.position.copy(position);
+                            
+                            // Store simulation data
+                            electron.userData = {
+                                velocity: commonVelocity.clone(),
+                                temperature: sim.hotTemperature,
+                                baseSpeed: electronSpeed,
+                                scatteringFactor: 0.1, // Base scattering factor
+                                electronId: `electron_${electronIndex}`
+                            };
+                            electronGroup.add(electron);
+                            simulation.electrons.push(electron);
+                            
+                            electronIndex++;
+                        }
+                    }
+                }
+            }
+            
+            // Apply initial boundary conditions
+            applyBoundaryConditions();
+            // Initialize heat flow calculation
+            simulation.previousEnergyState = calculateTotalEnergy();
+            simulation.lastHeatFlowUpdate = Date.now();
+        }
+        
+        // Clear simulation objects
+        function clearSimulationObjects() {
+            // Remove atoms
+            while (atomGroup.children.length > 0) {
+                atomGroup.remove(atomGroup.children[0]);
+            }
+            simulation.atoms = [];
+            // Remove electrons
+            while (electronGroup.children.length > 0) {
+                electronGroup.remove(electronGroup.children[0]);
+            }
+            simulation.electrons = [];
+            
+            simulation.temperatureField = null;
+            simulation.phononField = null;
+            simulation.bounds = null;
+        }
+        
+        // Apply boundary conditions
+        function applyBoundaryConditions() {
+            const sim = getSimulationParameters();
+            const grid = simulation.gridSize;
+            
+            // Convert normalized coordinates to grid indices
+            const hotI = Math.floor(sim.hotRegionX * (grid - 1));
+            const hotJ = Math.floor(sim.hotRegionY * (grid - 1));
+            const hotK = Math.floor(sim.hotRegionZ * (grid - 1));
+            const coldI = Math.floor(sim.coldRegionX * (grid - 1));
+            const coldJ = Math.floor(sim.coldRegionY * (grid - 1));
+            const coldK = Math.floor(sim.coldRegionZ * (grid - 1));
+            
+            // Apply hot and cold regions
+            for (let i = 0; i < grid; i++) {
+                for (let j = 0; j < grid; j++) {
+                    for (let k = 0; k < grid; k++) {
+                        const distHot = Math.sqrt(
+                            Math.pow(i - hotI, 2) + 
+                            Math.pow(j - hotJ, 2) + 
+                            Math.pow(k - hotK, 2)
+                        );
+                        const distCold = Math.sqrt(
+                            Math.pow(i - coldI, 2) + 
+                            Math.pow(j - coldJ, 2) + 
+                            Math.pow(k - coldK, 2)
+                        );
+                        if (distHot <= sim.hotRegionRadius) {
+                            simulation.temperatureField[i][j][k] = sim.hotTemperature;
+                        } else if (distCold <= sim.coldRegionRadius) {
+                            simulation.temperatureField[i][j][k] = sim.coldTemperature;
+                        }
+                    }
+                }
+            }
+            
+            // Apply hot object influence
+            if (sim.hotObjectActive && simulation.bounds) {
+                const pos = simulation.hotObject.position;
+                const size = new THREE.Vector3().subVectors(simulation.bounds.max, simulation.bounds.min);
+                const normPos = new THREE.Vector3(
+                    (pos.x - simulation.bounds.min.x) / size.x,
+                    (pos.y - simulation.bounds.min.y) / size.y,
+                    (pos.z - simulation.bounds.min.z) / size.z
+                );
+                const objI = Math.min(grid - 1, Math.max(0, Math.floor(normPos.x * (grid - 1))));
+                const objJ = Math.min(grid - 1, Math.max(0, Math.floor(normPos.y * (grid - 1))));
+                const objK = Math.min(grid - 1, Math.max(0, Math.floor(normPos.z * (grid - 1))));
+                for (let i = Math.max(0, objI - sim.hotObjectRadiusCells); i <= Math.min(grid - 1, objI + sim.hotObjectRadiusCells); i++) {
+                    for (let j = Math.max(0, objJ - sim.hotObjectRadiusCells); j <= Math.min(grid - 1, objJ + sim.hotObjectRadiusCells); j++) {
+                        for (let k = Math.max(0, objK - sim.hotObjectRadiusCells); k <= Math.min(grid - 1, objK + sim.hotObjectRadiusCells); k++) {
+                            const dist = Math.sqrt(
+                                Math.pow(i - objI, 2) + 
+                                Math.pow(j - objJ, 2) + 
+                                Math.pow(k - objK, 2)
+                            );
+                            if (dist <= sim.hotObjectRadiusCells) {
+                                const influence = 1.0 - (dist / sim.hotObjectRadiusCells);
+                                const currentTemp = simulation.temperatureField[i][j][k];
+                                const targetTemp = sim.hotObjectTemperature;
+                                simulation.temperatureField[i][j][k] = Math.max(
+                                    currentTemp, 
+                                    currentTemp + (targetTemp - currentTemp) * influence * 0.3
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Get grid indices for a position
+        function getGridIndices(pos) {
+            if (!simulation.bounds || simulation.bounds.max.distanceTo(simulation.bounds.min) === 0) {
+                return { i: 0, j: 0, k: 0 };
+            }
+            
+            const size = new THREE.Vector3().subVectors(simulation.bounds.max, simulation.bounds.min);
+            const normPos = new THREE.Vector3(
+                (pos.x - simulation.bounds.min.x) / size.x,
+                (pos.y - simulation.bounds.min.y) / size.y,
+                (pos.z - simulation.bounds.min.z) / size.z
+            );
+            const i = Math.min(simulation.gridSize - 1, Math.max(0, Math.floor(normPos.x * (simulation.gridSize - 1))));
+            const j = Math.min(simulation.gridSize - 1, Math.max(0, Math.floor(normPos.y * (simulation.gridSize - 1))));
+            const k = Math.min(simulation.gridSize - 1, Math.max(0, Math.floor(normPos.z * (simulation.gridSize - 1))));
+            
+            return { i, j, k };
+        }
+        
+        // Solve heat equation step
+        function solveHeatEquationStep() {
+            const sim = getSimulationParameters();
+            const alpha = sim.thermalConductivity * 0.02;
+            const grid = simulation.gridSize;
+            // Create a copy of the temperature field
+            const tempCopy = new Array(grid);
+            for (let i = 0; i < grid; i++) {
+                tempCopy[i] = new Array(grid);
+                for (let j = 0; j < grid; j++) {
+                    tempCopy[i][j] = new Array(grid);
+                    for (let k = 0; k < grid; k++) {
+                        tempCopy[i][j][k] = simulation.temperatureField[i][j][k];
+                    }
+                }
+            }
+            
+            // Calculate laplacian and update temperature
+            for (let i = 1; i < grid - 1; i++) {
+                for (let j = 1; j < grid - 1; j++) {
+                    for (let k = 1; k < grid - 1; k++) {
+                        const laplacian = (
+                            tempCopy[i+1][j][k] + tempCopy[i-1][j][k] +
+                            tempCopy[i][j+1][k] + tempCopy[i][j-1][k] +
+                            tempCopy[i][j][k+1] + tempCopy[i][j][k-1] -
+                            6 * tempCopy[i][j][k]
+                        );
+                        
+                        simulation.temperatureField[i][j][k] += alpha * laplacian * 0.1;
+                    }
+                }
+            }
+            
+            applyBoundaryConditions();
+        }
+        
+        // Update electron motion
+        function updateElectronMotion() {
+            const sim = getSimulationParameters();
+            const dt = 0.05;
+            
+            // Use larger collision radius
+            const collRadius = (sim.atomSize + sim.electronSize) * 1.2;
+            const collRadiusSq = collRadius * collRadius;
+            
+            // Calculate common drift direction
+            const coldCenterWorld = new THREE.Vector3(
+                (sim.coldRegionX - 0.5) * sim.atomCountX * sim.atomSpacing,
+                (sim.coldRegionY - 0.5) * sim.atomCountY * sim.atomSpacing,
+                (sim.coldRegionZ - 0.5) * sim.atomCountZ * sim.atomSpacing
+            );
+            
+            const hotCenterWorld = new THREE.Vector3(
+                (sim.hotRegionX - 0.5) * sim.atomCountX * sim.atomSpacing,
+                (sim.hotRegionY - 0.5) * sim.atomCountY * sim.atomSpacing,
+                (sim.hotRegionZ - 0.5) * sim.atomCountZ * sim.atomSpacing
+            );
+            const commonDriftDir = new THREE.Vector3().subVectors(coldCenterWorld, hotCenterWorld);
+            if (commonDriftDir.length() > 0.001) {
+                commonDriftDir.normalize();
+            } else {
+                commonDriftDir.set(1, 0, 0);
+            }
+            
+            // Hot object influence on electrons
+            let hotObjInfluence = 1.0;
+            if (sim.hotObjectActive) {
+                const distance = simulation.hotObject.position.distanceTo(new THREE.Vector3(0, 0, 0));
+                const maxInfluenceDistance = sim.hotObjectRadiusCells * sim.atomSpacing * 2.0;
+                if (distance < maxInfluenceDistance) {
+                    const influenceFactor = 1.0 - (distance / maxInfluenceDistance);
+                    hotObjInfluence = 1.0 + influenceFactor * 2.0;
+                }
+            }
+            
+            for (const electron of simulation.electrons) {
+                let velocity = electron.userData.velocity.clone();
+                // Apply common drift with hot object influence
+                const driftStrength = sim.electronDrift * 0.2;
+                const baseSpeed = electron.userData.baseSpeed || sim.electronSpeed;
+                
+                // All electrons maintain the same drift direction and speed
+                const driftVelocity = commonDriftDir.clone().multiplyScalar(baseSpeed * driftStrength * hotObjInfluence);
+                // Higher ambient temperature increases scattering (more random motion)
+                // This reduces the effective travel distance of electrons
+                const ambientScattering = 0.1 + (sim.ambientTemperature / 1000) * 0.8;
+                electron.userData.scatteringFactor = ambientScattering;
+                
+                // Add random motion based on ambient temperature
+                if (Math.random() < ambientScattering) {
+                    const scatterMag = baseSpeed * 0.5 * hotObjInfluence;
+                    const scatterDir = new THREE.Vector3(
+                        Math.random() * 2 - 1,
+                        Math.random() * 2 - 1,
+                        Math.random() * 2 - 1
+                    ).normalize();
+                    
+                    velocity.add(scatterDir.multiplyScalar(scatterMag));
+                } else {
+                    // Maintain drift direction with some variation
+                    velocity = driftVelocity.clone();
+                }
+                
+                // Update position
+                electron.position.add(velocity.clone().multiplyScalar(dt));
+                // Check if electron reached cold region or went out of bounds - RESPAWN at hot side
+                const coldRegionCenter = new THREE.Vector3(
+                    sim.coldRegionX * (sim.atomCountX - 1) * sim.atomSpacing - simulation.bounds.min.x,
+                    sim.coldRegionY * (sim.atomCountY - 1) * sim.atomSpacing - simulation.bounds.min.y,
+                    sim.coldRegionZ * (sim.atomCountZ - 1) * sim.atomSpacing - simulation.bounds.min.z
+                );
+                const coldRegionDist = electron.position.distanceTo(coldRegionCenter);
+                const coldThreshold = sim.coldRegionRadius * sim.atomSpacing * 1.5;
+                
+                let outOfBounds = false;
+                if (simulation.bounds) {
+                    if (electron.position.x < simulation.bounds.min.x - 2.0 || electron.position.x > simulation.bounds.max.x + 2.0 ||
+                        electron.position.y < simulation.bounds.min.y - 2.0 || electron.position.y > simulation.bounds.max.y + 2.0 ||
+                        electron.position.z < simulation.bounds.min.z - 2.0 || electron.position.z > simulation.bounds.max.z + 2.0) {
+                        outOfBounds = true;
+                    }
+                }
+                
+                if (coldRegionDist < coldThreshold || outOfBounds) {
+                    // Respawn at hot side with random YZ position
+                    electron.position.set(
+                        simulation.bounds.min.x - sim.atomSpacing,
+                        simulation.bounds.min.y + Math.random() * (simulation.bounds.max.y - simulation.bounds.min.y),
+                        simulation.bounds.min.z + Math.random() * (simulation.bounds.max.z - simulation.bounds.min.z)
+                    );
+                    electron.userData.temperature = sim.hotTemperature;
+                }
+                
+                // Rigid collision detection with atoms
+                const collidedAtoms = [];
+                // Find all atoms that are colliding with this electron
+                for (const atom of simulation.atoms) {
+                    const distSq = electron.position.distanceToSquared(atom.position);
+                    if (distSq < collRadiusSq) {
+                        collidedAtoms.push({ distSq, atom });
+                    }
+                }
+                
+                // Sort by distance (closest first)
+                collidedAtoms.sort((a, b) => a.distSq - b.distSq);
+                for (const { distSq, atom } of collidedAtoms) {
+                    // Calculate collision normal
+                    const normal = new THREE.Vector3().subVectors(electron.position, atom.position);
+                    if (normal.length() > 0.001) {
+                        normal.normalize();
+                    }
+                    
+                    // Rigid collision - bounce off with proper physics
+                    const vReflect = velocity.clone().sub(normal.clone().multiplyScalar(2 * velocity.dot(normal)));
+                    velocity.copy(vReflect);
+                    
+                    // Move electron away from collision to prevent sticking
+                    const overlap = collRadius - Math.sqrt(distSq);
+                    if (overlap > 0) {
+                        electron.position.add(normal.multiplyScalar(overlap * 1.1));
+                    }
+                    
+                    // Energy transfer and vibration - only for conductors
+                    const gridIdx = getGridIndices(atom.position);
+                    const energyTransfer = 2.0 * sim.thermalConductivity * hotObjInfluence;
+                    simulation.temperatureField[gridIdx.i][gridIdx.j][gridIdx.k] += energyTransfer;
+                    // Make atom vibrate when hit by electron
+                    const impulse = 0.3 * sim.vibrationScale * hotObjInfluence;
+                    const currentAmp = atom.userData.vibrationAmplitude || 0.0;
+                    atom.userData.vibrationAmplitude = Math.min(0.4, currentAmp + impulse);
+                    atom.userData.vibrationSource = 'electron';
+                    atom.userData.lastCollisionTime = simulation.simulationTime;
+                    // Reset decay timer on collision
+                    atom.userData.vibrationDecay = 0.99;
+                    // More electrons = more vibrations (transfer to neighbors)
+                    // Higher electron count and density increases vibration range
+                    const neighborImpulseFactor = Math.min(1, sim.electronCount * sim.electronDensity / 200);
+                    const rangeMultiplier = 1 + (sim.electronCount * sim.electronDensity / 300);
+                    // Transfer vibration to neighboring atoms
+                    const { x: i, y: j, z: k } = atom.userData.gridPos;
+                    const maxRange = Math.floor(1 * rangeMultiplier);
+                    
+                    for (let di = -maxRange; di <= maxRange; di++) {
+                        for (let dj = -maxRange; dj <= maxRange; dj++) {
+                            for (let dk = -maxRange; dk <= maxRange; dk++) {
+                                if (di === 0 && dj === 0 && dk === 0) continue;
+                                // Find neighbor atom
+                                const neighborI = i + di;
+                                const neighborJ = j + dj;
+                                const neighborK = k + dk;
+                                const neighbor = findAtomByGridPos(neighborI, neighborJ, neighborK);
+                                if (neighbor) {
+                                    // Distance-based impulse for neighbors - reduced for neighbors
+                                    const distance = Math.sqrt(di*di + dj*dj + dk*dk);
+                                    if (distance <= maxRange) {
+                                        const distanceDecay = 1.0 / (distance * 1.5);
+                                        const neighborImpulse = impulse * 0.6 * distanceDecay * neighborImpulseFactor;
+                                        const neighborAmp = neighbor.userData.vibrationAmplitude || 0.0;
+                                        neighbor.userData.vibrationAmplitude = Math.min(0.35, neighborAmp + neighborImpulse);
+                                        neighbor.userData.vibrationDecay = 0.99;
+                                        neighbor.userData.vibrationSource = 'electron';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                electron.userData.velocity = velocity;
+            }
+        }
+        
+        // Find atom by grid position
+        function findAtomByGridPos(i, j, k) {
+            for (const atom of simulation.atoms) {
+                const { x, y, z } = atom.userData.gridPos;
+                if (x === i && y === j && z === k) {
+                    return atom;
+                }
+            }
+            return null;
+        }
+        
+        // Update hot object vibrations (for insulators)
+        function updateHotObjectVibrations() {
+            const sim = getSimulationParameters();
+            if (!sim.hotObjectActive || simulation.materialType !== 'INSULATOR') return;
+            
+            const hotObjPos = simulation.hotObject.position;
+            const currentTime = simulation.simulationTime;
+            // Sort atoms by distance from hot object
+            const atomsByDistance = simulation.atoms.map(atom => {
+                return {
+                    atom,
+                    distance: atom.position.distanceTo(hotObjPos)
+                };
+            }).sort((a, b) => a.distance - b.distance);
+            // Calculate the maximum effective distance
+            const maxDistance = sim.hotObjectRadiusCells * sim.atomSpacing * 3.0;
+            // Initialize vibration propagation if not started
+            if (!simulation.insulatorVibrationStarted) {
+                simulation.insulatorVibrationStarted = true;
+                // Set up vibration delays based on distance
+                for (const { atom, distance } of atomsByDistance) {
+                    const atomId = atom.userData.atomId;
+                    if (distance <= maxDistance) {
+                        // Calculate delay based on distance - closer atoms start sooner
+                        const delay = distance * 0.8;
+                        // Delay in seconds proportional to distance
+                        
+                        // Calculate intensity based on distance - closer atoms vibrate more intensely
+                        const distanceFactor = 1.0 - (distance / maxDistance);
+                        const intensity = distanceFactor * 0.01 * sim.hotObjectTemperature / 100;
+                        simulation.insulatorVibrationDelay[atomId] = {
+                            startTime: currentTime + delay,
+                            intensity: intensity,
+                            startTimeSet: true,
+                            energyAccumulated: 0,
+                            hasStarted: false
+                        };
+                    }
+                }
+            }
+            
+            // Update atom vibrations based on their delay
+            for (const { atom, distance } of atomsByDistance) {
+                const atomId = atom.userData.atomId;
+                const vibrationData = simulation.insulatorVibrationDelay[atomId];
+                
+                if (vibrationData && distance <= maxDistance) {
+                    // If it's time for this atom to start vibrating
+                    if (currentTime >= vibrationData.startTime && !vibrationData.hasStarted) {
+                        vibrationData.hasStarted = true;
+                    }
+                    
+                    // If vibration has started, gradually increase amplitude
+                    if (vibrationData.hasStarted) {
+                        // Gradually accumulate vibration energy (slow process for insulators)
+                        const energyIncrement = vibrationData.intensity * 0.02;
+                        vibrationData.energyAccumulated = Math.min(
+                            1.0, 
+                            vibrationData.energyAccumulated + energyIncrement
+                        );
+                        const currentAmp = atom.userData.vibrationAmplitude || 0.0;
+                        const targetAmplitude = vibrationData.energyAccumulated * vibrationData.intensity * 5;
+                        // Slowly approach target amplitude
+                        atom.userData.vibrationAmplitude = Math.min(
+                            targetAmplitude, 
+                            currentAmp + (targetAmplitude - currentAmp) * 0.05
+                        );
+                        atom.userData.vibrationSource = 'hotObject';
+                        atom.userData.vibrationDecay = 0.98; // Slow decay for hot object vibrations
+                    }
+                }
+            }
+        }
+        
+        // Update phonon field
+        function updatePhononField() {
+            if (!simulation.phononField || simulation.materialType !== 'INSULATOR') return;
+            
+            const sim = getSimulationParameters();
+            const grid = simulation.gridSize;
+            
+            const newPhonon = new Array(grid);
+            for (let i = 0; i < grid; i++) {
+                newPhonon[i] = new Array(grid);
+                for (let j = 0; j < grid; j++) {
+                    newPhonon[i][j] = new Array(grid);
+                    for (let k = 0; k < grid; k++) {
+                        newPhonon[i][j][k] = 0;
+                    }
+                }
+            }
+            
+            // Hot object influence on phonon field
+            const hotObjPhononSource = new Array(grid);
+            for (let i = 0; i < grid; i++) {
+                hotObjPhononSource[i] = new Array(grid);
+                for (let j = 0; j < grid; j++) {
+                    hotObjPhononSource[i][j] = new Array(grid);
+                    for (let k = 0; k < grid; k++) {
+                        hotObjPhononSource[i][j][k] = 0;
+                    }
+                }
+            }
+            
+            if (sim.hotObjectActive && simulation.bounds) {
+                const pos = simulation.hotObject.position;
+                const size = new THREE.Vector3().subVectors(simulation.bounds.max, simulation.bounds.min);
+                
+                const normPos = new THREE.Vector3(
+                    (pos.x - simulation.bounds.min.x) / size.x,
+                    (pos.y - simulation.bounds.min.y) / size.y,
+                    (pos.z - simulation.bounds.min.z) / size.z
+                );
+                const objI = Math.min(grid - 1, Math.max(0, Math.floor(normPos.x * (grid - 1))));
+                const objJ = Math.min(grid - 1, Math.max(0, Math.floor(normPos.y * (grid - 1))));
+                const objK = Math.min(grid - 1, Math.max(0, Math.floor(normPos.z * (grid - 1))));
+                for (let i = Math.max(0, objI - sim.hotObjectRadiusCells); i <= Math.min(grid - 1, objI + sim.hotObjectRadiusCells); i++) {
+                    for (let j = Math.max(0, objJ - sim.hotObjectRadiusCells); j <= Math.min(grid - 1, objJ + sim.hotObjectRadiusCells); j++) {
+                        for (let k = Math.max(0, objK - sim.hotObjectRadiusCells); k <= Math.min(grid - 1, objK + sim.hotObjectRadiusCells); k++) {
+                            const dist = Math.sqrt(
+                                Math.pow(i - objI, 2) + 
+                                Math.pow(j - objJ, 2) + 
+                                Math.pow(k - objK, 2)
+                            );
+                            if (dist <= sim.hotObjectRadiusCells) {
+                                // Hot object generates phonons
+                                const influence = 1.0 - (dist / sim.hotObjectRadiusCells);
+                                const phononGeneration = influence * 0.1 * sim.thermalConductivity;
+                                hotObjPhononSource[i][j][k] += phononGeneration;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            for (let i = 0; i < grid; i++) {
+                for (let j = 0; j < grid; j++) {
+                    for (let k = 0; k < grid; k++) {
+                        // Phonon generation based on temperature
+                        const temp = simulation.temperatureField[i][j][k];
+                        let phononGeneration = 0.0;
+                        if (temp > sim.ambientTemperature) {
+                            const tempFactor = (temp - sim.ambientTemperature) / Math.max(1, sim.hotTemperature - sim.ambientTemperature);
+                            phononGeneration = tempFactor * 0.1 * sim.thermalConductivity;
+                        }
+                        
+                        // Add hot object phonon source
+                        phononGeneration += hotObjPhononSource[i][j][k];
+                        // Phonon propagation from neighbors with distance-based decay
+                        let neighborPhonons = 0.0;
+                        let count = 0;
+                        
+                        for (let di = -1; di <= 1; di++) {
+                            for (let dj = -1; dj <= 1; dj++) {
+                                for (let dk = -1; dk <= 1; dk++) {
+                                    if (di === 0 && dj === 0 && dk === 0) continue;
+                                    const ni = i + di;
+                                    const nj = j + dj;
+                                    const nk = k + dk;
+                                    if (ni >= 0 && ni < grid && nj >= 0 && nj < grid && nk >= 0 && nk < grid) {
+                                        // Distance-based decay
+                                        const distance = Math.sqrt(di*di + dj*dj + dk*dk);
+                                        // Higher ambient temperature increases phonon scattering in insulators
+                                        const ambientScattering = (sim.ambientTemperature / 1000) * 0.2;
+                                        const decayFactor = 0.8 - (distance * 0.2) - (sim.thermalConductivity * 0.02) - ambientScattering;
+                                        neighborPhonons += simulation.phononField[ni][nj][nk] * Math.max(0.1, decayFactor);
+                                        count++;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        const neighborAvg = count > 0 ?
+                        neighborPhonons / count : 0.0;
+                        
+                        // Update phonon field
+                        const propagation = sim.thermalConductivity * 0.4;
+                        const decay = 0.9;
+                        
+                        newPhonon[i][j][k] = (
+                            simulation.phononField[i][j][k] * decay +
+                            neighborAvg * propagation +
+                            phononGeneration
+                        );
+                    }
+                }
+            }
+            
+            simulation.phononField = newPhonon;
+        }
+        
+        // Update atom vibrations
+        function updateAtomVibrations() {
+            const sim = getSimulationParameters();
+            for (const atom of simulation.atoms) {
+                const basePos = atom.userData.basePos;
+                let amplitude = 0.0;
+                let phase = atom.userData.vibrationPhase || 0.0;
+                if (simulation.materialType === 'CONDUCTOR') {
+                    // Conductor: vibration primarily from electron collisions
+                    amplitude = atom.userData.vibrationAmplitude || 0.0;
+                    
+                    // Apply decay to vibration amplitude
+                    const decayRate = atom.userData.vibrationDecay || 0.99;
+                    atom.userData.vibrationAmplitude = amplitude * decayRate;
+                    amplitude = atom.userData.vibrationAmplitude;
+                    
+                } else {
+                    // Insulator: vibration from phonons and hot object
+                    const gridIdx = getGridIndices(atom.position);
+                    const phononStrength = simulation.phononField ? simulation.phononField[gridIdx.i][gridIdx.j][gridIdx.k] : 0;
+                    
+                    // Phonon-based vibration
+                    const phononAmplitude = phononStrength * 0.005 * sim.vibrationScale;
+                    // Hot object direct vibration (already applied in updateHotObjectVibrations)
+                    const hotObjectAmplitude = atom.userData.vibrationAmplitude || 0.0;
+                    
+                    // Use the maximum of phonon and hot object vibrations
+                    amplitude = Math.max(phononAmplitude, hotObjectAmplitude);
+                    // Apply decay
+                    const decayRate = atom.userData.vibrationDecay || 0.98;
+                    atom.userData.vibrationAmplitude = amplitude * decayRate;
+                    amplitude = atom.userData.vibrationAmplitude;
+                }
+                
+                // Apply vibration - atoms stay near their base positions
+                if (amplitude > 0.0001) {
+                    const maxAllowedAmplitude = sim.atomSize * 0.3;
+                    const safeAmplitude = Math.min(amplitude, maxAllowedAmplitude);
+                    
+                    const vibration = new THREE.Vector3(
+                        Math.sin(phase) * safeAmplitude,
+                        Math.sin(phase * 1.3 + 1.0) * safeAmplitude * 0.8,
+                        Math.sin(phase * 0.7 + 2.0) * safeAmplitude * 0.6
+                    );
+                    atom.position.copy(basePos).add(vibration);
+                    
+                    // Update phase
+                    const phaseIncrement = 0.15 + safeAmplitude * 10.0;
+                    atom.userData.vibrationPhase = phase + phaseIncrement;
+                } else {
+                    // Return to base position
+                    atom.position.copy(basePos);
+                    atom.userData.vibrationAmplitude = 0;
+                }
+            }
+        }
+        
+        // Update visuals
+        function updateVisuals() {
+            const sim = getSimulationParameters();
+            const tMin = sim.coldTemperature;
+            const tMax = sim.hotTemperature;
+            const tRange = Math.max(1, tMax - tMin);
+            for (const atom of simulation.atoms) {
+                const gridIdx = getGridIndices(atom.position);
+                const temp = simulation.temperatureField[gridIdx.i][gridIdx.j][gridIdx.k];
+                const normTemp = Math.max(0, Math.min(1, (temp - tMin) / tRange));
+                // Simple color gradient: blue (cold) -> green -> red (hot)
+                let color;
+                if (normTemp < 0.5) {
+                    color = new THREE.Color(0, normTemp * 2, 1 - normTemp * 2);
+                } else {
+                    color = new THREE.Color((normTemp - 0.5) * 2, 1 - (normTemp - 0.5), 0);
+                }
+                
+                atom.material.color = color;
+                atom.material.emissive = color;
+                atom.material.emissiveIntensity = normTemp * 0.5;
+            }
+            
+            // Electrons have fixed blue color, independent of temperature
+            for (const electron of simulation.electrons) {
+                const color = new THREE.Color(0x0088ff);
+                // Bright blue color
+                electron.material.color = color;
+                electron.material.emissive = color;
+                electron.material.emissiveIntensity = 1.5; // Increased brightness
+            }
+            
+            // Update hot object appearance
+            const hotObjActive = document.getElementById('hot-object-active').checked;
+            if (hotObjActive) {
+                hotObjectMesh.material.color = new THREE.Color(0xff9800);
+                hotObjectMesh.material.emissive = new THREE.Color(0xff9800);
+                hotObjectMesh.material.emissiveIntensity = 0.5;
+            } else {
+                hotObjectMesh.material.color = new THREE.Color(0x666666);
+                hotObjectMesh.material.emissive = new THREE.Color(0x333333);
+                hotObjectMesh.material.emissiveIntensity = 0.1;
+            }
+        }
+        
+        // Calculate total energy in the system for heat flow calculation
+        function calculateTotalEnergy() {
+            let totalEnergy = 0;
+            const grid = simulation.gridSize;
+            
+            for (let i = 0; i < grid; i++) {
+                for (let j = 0; j < grid; j++) {
+                    for (let k = 0; k < grid; k++) {
+                        // Energy is proportional to temperature (simplified)
+                        totalEnergy += simulation.temperatureField[i][j][k];
+                    }
+                }
+            }
+            
+            return totalEnergy;
+        }
+        
+        // Calculate heat flow rate
+        function calculateHeatFlowRate() {
+            const currentTime = Date.now();
+            const timeElapsed = (currentTime - simulation.lastHeatFlowUpdate) / 1000; // Convert to seconds
+            
+            if (timeElapsed < 0.5) return simulation.heatFlowRate;
+            // Update at most every 0.5 seconds
+            
+            const currentEnergy = calculateTotalEnergy();
+            const energyChange = currentEnergy - simulation.previousEnergyState;
+            
+            // Heat flow rate = energy change per unit time
+            // Convert to watts (simplified scaling)
+            simulation.heatFlowRate = Math.abs(energyChange / timeElapsed) * 0.01;
+            simulation.previousEnergyState = currentEnergy;
+            simulation.lastHeatFlowUpdate = currentTime;
+            
+            return simulation.heatFlowRate;
+        }
+        
+        // Step the simulation
+        function stepSimulation() {
+            if (!simulation.isRunning || simulation.isPaused) return;
+            solveHeatEquationStep();
+            const sim = getSimulationParameters();
+            
+            if (simulation.materialType === 'CONDUCTOR') {
+                updateElectronMotion();
+            } else {
+                updatePhononField();
+                updateHotObjectVibrations();
+            }
+            
+            updateAtomVibrations();
+            updateVisuals();
+            
+            // Update average temperature
+            let totalTemp = 0;
+            let count = 0;
+            for (let i = 0; i < simulation.gridSize; i++) {
+                for (let j = 0; j < simulation.gridSize; j++) {
+                    for (let k = 0; k < simulation.gridSize; k++) {
+                        totalTemp += simulation.temperatureField[i][j][k];
+                        count++;
+                    }
+                }
+            }
+            simulation.avgTemperature = totalTemp / count;
+            // Update heat flow rate
+            calculateHeatFlowRate();
+            // Update simulation time
+            simulation.simulationTime = (Date.now() - simulation.startTime) / 1000;
+            // Update UI
+            updateUI();
+        }
+        
+        // Start the simulation
+        function startSimulation() {
+            if (simulation.atoms.length === 0) {
+                buildGeometry();
+            }
+            
+            if (!simulation.isRunning) {
+                simulation.isRunning = true;
+                simulation.isPaused = false;
+                simulation.startTime = Date.now() - (simulation.simulationTime * 1000);
+                
+                statusElement.textContent = 'Running';
+                startBtn.textContent = 'Restart';
+            } else if (simulation.isPaused) {
+                simulation.isPaused = false;
+                simulation.startTime = Date.now() - (simulation.simulationTime * 1000);
+                statusElement.textContent = 'Running';
+            }
+        }
+        
+        // Pause the simulation
+        function pauseSimulation() {
+            if (simulation.isRunning) {
+                simulation.isPaused = !simulation.isPaused;
+                statusElement.textContent = simulation.isPaused ? 'Paused' : 'Running';
+                pauseBtn.textContent = simulation.isPaused ? 'Resume' : 'Pause';
+            }
+        }
+        
+        // Reset the simulation
+        function resetSimulation() {
+            simulation.isRunning = false;
+            simulation.isPaused = false;
+            simulation.startTime = 0;
+            simulation.simulationTime = 0;
+            simulation.avgTemperature = 0;
+            simulation.heatFlowRate = 0;
+            simulation.insulatorVibrationStarted = false;
+            
+            clearSimulationObjects();
+            statusElement.textContent = 'Stopped';
+            startBtn.textContent = 'Start Simulation';
+            pauseBtn.textContent = 'Pause';
+            
+            updateUI();
+        }
+        
+        // Get simulation parameters from UI
+        function getSimulationParameters() {
+            return {
+                materialType: simulation.materialType,
+                thermalConductivity: parseFloat(document.getElementById('thermal-conductivity').value),
+                atomCountX: parseInt(document.getElementById('atom-count-x').value),
+                atomCountY: parseInt(document.getElementById('atom-count-y').value),
+                atomCountZ: parseInt(document.getElementById('atom-count-z').value),
+                atomSpacing: parseFloat(document.getElementById('atom-spacing').value),
+                atomSize: parseFloat(document.getElementById('atom-size').value),
+                electronCount: parseInt(document.getElementById('electron-count').value),
+                electronDensity: parseFloat(document.getElementById('electron-density').value),
+                electronSize: parseFloat(document.getElementById('electron-size').value),
+                electronSpeed: parseFloat(document.getElementById('electron-speed').value),
+                electronDrift: parseFloat(document.getElementById('electron-drift').value),
+                hotTemperature: parseFloat(document.getElementById('hot-temp').value),
+                coldTemperature: parseFloat(document.getElementById('cold-temp').value),
+                ambientTemperature: parseFloat(document.getElementById('ambient-temp').value),
+                hotRegionX: 0.1,
+                hotRegionY: 0.5,
+                hotRegionZ: 0.5,
+                coldRegionX: 0.9,
+                coldRegionY: 0.5,
+                
+                coldRegionZ: 0.5,
+                hotRegionRadius: parseInt(document.getElementById('hot-radius').value),
+                coldRegionRadius: parseInt(document.getElementById('cold-radius').value),
+                gridSize: 25,
+                vibrationScale: parseFloat(document.getElementById('vibration-scale').value),
+                simulationSpeed: parseFloat(document.getElementById('sim-speed').value),
+                hotObjectActive: document.getElementById('hot-object-active').checked,
+                hotObjectTemperature: parseFloat(document.getElementById('hot-object-temp').value),
+                hotObjectRadiusCells: parseInt(document.getElementById('hot-object-radius').value)
+            };
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            avgTempElement.textContent = simulation.avgTemperature.toFixed(1) + '°C';
+            heatFlowElement.textContent = simulation.heatFlowRate.toFixed(2) + ' W';
+            simTimeElement.textContent = simulation.simulationTime.toFixed(1) + 's';
+        }
+        
+        // Set material type
+        function setMaterialType(type) {
+            simulation.materialType = type;
+            if (type === 'CONDUCTOR') {
+                conductorBtn.classList.add('active');
+                insulatorBtn.classList.remove('active');
+                electronSettings.style.display = 'block';
+            } else {
+                conductorBtn.classList.remove('active');
+                insulatorBtn.classList.add('active');
+                electronSettings.style.display = 'none';
+            }
+            
+            // Rebuild geometry if simulation is running
+            if (simulation.isRunning) {
+                buildGeometry();
+            }
+        }
+        
+        // Sync slider and number input
+        function syncInputs(sliderId, numberId) {
+            const slider = document.getElementById(sliderId);
+            const number = document.getElementById(numberId);
+            
+            slider.addEventListener('input', function() {
+                number.value = this.value;
+                if (simulation.isRunning && !simulation.isPaused) {
+                    // Rebuild geometry for significant changes
+                    if (sliderId.includes('count') || sliderId.includes('spacing') || sliderId.includes('size') || 
+                        sliderId === 'thermal-conductivity' || sliderId === 'electron-density') {
+                        buildGeometry();
+                    }
+                }
+            });
+            number.addEventListener('input', function() {
+                slider.value = this.value;
+                if (simulation.isRunning && !simulation.isPaused) {
+                    // Rebuild geometry for significant changes
+                    if (sliderId.includes('count') || sliderId.includes('spacing') || sliderId.includes('size') || 
+                        sliderId === 'thermal-conductivity' || sliderId === 'electron-density') {
+                        buildGeometry();
+                    }
+                }
+            });
+        }
+        
+        // Initialize event listeners
+        function initEventListeners() {
+            // Material type buttons
+            conductorBtn.addEventListener('click', () => setMaterialType('CONDUCTOR'));
+            insulatorBtn.addEventListener('click', () => setMaterialType('INSULATOR'));
+            
+            // Simulation control buttons
+            startBtn.addEventListener('click', startSimulation);
+            pauseBtn.addEventListener('click', pauseSimulation);
+            resetBtn.addEventListener('click', resetSimulation);
+            buildBtn.addEventListener('click', buildGeometry);
+            
+            // Sync all slider and number inputs
+            syncInputs('sim-speed', 'sim-speed-value');
+            syncInputs('thermal-conductivity', 'thermal-conductivity-value');
+            syncInputs('vibration-scale', 'vibration-scale-value');
+            syncInputs('atom-count-x', 'atom-count-x-value');
+            syncInputs('atom-count-y', 'atom-count-y-value');
+            syncInputs('atom-count-z', 'atom-count-z-value');
+            syncInputs('atom-spacing', 'atom-spacing-value');
+            syncInputs('atom-size', 'atom-size-value');
+            syncInputs('electron-density', 'electron-density-value');
+            syncInputs('electron-count', 'electron-count-value');
+            syncInputs('electron-size', 'electron-size-value');
+            syncInputs('electron-speed', 'electron-speed-value');
+            syncInputs('electron-drift', 'electron-drift-value');
+            syncInputs('hot-temp', 'hot-temp-value');
+            syncInputs('cold-temp', 'cold-temp-value');
+            syncInputs('ambient-temp', 'ambient-temp-value');
+            syncInputs('hot-radius', 'hot-radius-value');
+            syncInputs('cold-radius', 'cold-radius-value');
+            syncInputs('hot-object-temp', 'hot-object-temp-value');
+            syncInputs('hot-object-radius', 'hot-object-radius-value');
+            // Hot object active checkbox
+            document.getElementById('hot-object-active').addEventListener('change', function() {
+                // Update hot object appearance
+                updateVisuals();
+            });
+        }
+        
+        // Initialize the application
+        function init() {
+            initThreeJS();
+            initEventListeners();
+            buildGeometry();
+            
+            // Set initial material type
+            setMaterialType('CONDUCTOR');
+        }
+        
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
